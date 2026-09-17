@@ -147,6 +147,12 @@ There are no per-entry sensitivity tags, but **visibility tiers are enforced at 
 - `get_life_schema` tells an agent what it is currently allowed to read, so it discovers its boundaries up front rather than guessing from failures.
 - `request_access` asks for an area with a reason and a duration. **Grants expire** — a permanent grant is a grant nobody revisits.
 - **`propose` is the only path into a sealed area**, and it needs the person's yes. Direct creation, updates, and archiving in sealed areas are refused.
+
+**What sealing is, and what it is not.** Sealing is a boundary on what **this server hands over**. It is real against an agent whose only way in is the MCP tools — a hosted model, a chat client, anything running somewhere else. Those callers genuinely cannot see a sealed area, and cannot infer its shape from what is missing.
+
+It is **not** a boundary against an agent that can read your files directly. Entries are plain Markdown on disk and nothing is encrypted, so a coding agent running on this machine with file access can open `life/<area>/` and read a sealed entry without ever asking this server. Sealing does not stop that, the access log does not see it, and no setting here can change it — the same reason the third egress sentence exists.
+
+So seal for the reason it works: to keep an area out of what a connected agent is handed, and to make every read of the rest of it visible. Do not seal expecting it to withstand an agent that already has your filesystem. **If that distinction matters for something, the answer is not to put it in a sealed area — it is to keep it out of the life folder.**
 - **Revoking an area mid-session takes effect immediately**, on the very next tool call.
 
 ### The access log: what your agent read

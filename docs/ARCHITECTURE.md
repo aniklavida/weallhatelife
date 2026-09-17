@@ -79,7 +79,7 @@ Every read path asks a single policy module (`lib/access/policy.ts`) which areas
 
 The reasoning is unglamorous: with per-tool checks, the one tool whose check is forgotten is the one that leaks health data. One gate can be reviewed once and tested once.
 
-There are **no per-entry tiers, and nothing is encrypted at rest** — see [SPEC §9](SPEC.md#9--privacy--settled). Visibility tiers are enforced at the area boundary: sealed areas return nothing, indistinguishable from the area having no entries. `request_access` asks with a duration, grants expire, and `propose` is the only path into a sealed area.
+There are **no per-entry tiers, and nothing is encrypted at rest** — see [SPEC §9](SPEC.md#9--privacy--settled). Visibility tiers are enforced at the area boundary **of this server**: sealed areas return nothing, indistinguishable from the area having no entries. That binds any caller whose only route in is the MCP tools. It does not bind an agent with direct filesystem access — entries are plain Markdown and unencrypted, so such an agent can read a sealed area without this server seeing it. See the README for how that limit is stated to users. `request_access` asks with a duration, grants expire, and `propose` is the only path into a sealed area.
 
 ## 6 · The boundary the architecture cannot cross
 
