@@ -7,6 +7,7 @@
 // something that was never there — and writes a "left_alone" tending line
 // from the reason.
 import { z } from "zod";
+import { isAreaReadable } from "../../lib/access/policy";
 import { readEntry } from "../../lib/entry/read";
 import { recordTending } from "../../lib/tending/record";
 import { resolveLifeRoot } from "../runtime";
@@ -30,7 +31,7 @@ export const config = {
 export async function handler(args: { id: string; reason: string }) {
   const lifeRoot = resolveLifeRoot();
   const existing = readEntry(lifeRoot, args.id);
-  if (!existing) {
+  if (!existing || !isAreaReadable(lifeRoot, existing.entry.area)) {
     return {
       isError: true,
       content: [{ type: "text" as const, text: `No entry with id "${args.id}" exists.` }],
