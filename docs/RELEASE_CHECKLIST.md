@@ -38,7 +38,7 @@
 
 ## Assets and licences
 
-- [ ] **Every shipped photograph has its own licence recorded in its theme manifest**, permitting redistribution and modification in a public MIT repository.
+- [ ] **A user's own uploaded photo is theirs; the product records no licence and does not redistribute it.** Default images shipped in the repository are AI-generated for this project, and that origin is stated where they ship. Any third-party photograph shipped has its own licence recorded in its theme manifest, permitting redistribution and modification in a public MIT repository.
 - [ ] Every shipped font has a licence permitting redistribution.
 - [ ] Every dependency is listed with its licence.
 - [ ] Any copied or adapted code is declared with its source, commit and licence — or there is none, and that is stated.
