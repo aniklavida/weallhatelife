@@ -75,19 +75,23 @@ Images are the performance budget in a photographic design, so they are processe
 
 ## 5 · Access is decided in one place
 
-Every read path asks a single policy module which areas the connected agent may see. No tool decides for itself.
+Every read path asks a single policy module (`lib/access/policy.ts`) which areas the connected agent may see. No tool decides for itself.
 
 The reasoning is unglamorous: with per-tool checks, the one tool whose check is forgotten is the one that leaks health data. One gate can be reviewed once and tested once.
 
-There are **no per-entry tiers, and nothing is encrypted at rest** — see [SPEC §9](SPEC.md#9--privacy--settled). What is still undecided is whether per-area grants survive as a mechanism of their own. The single-gate structure holds either way, which is why it can be built before that is answered. **Nothing gates reads today:** the MCP server reports its access policy as not enforced.
+There are **no per-entry tiers, and nothing is encrypted at rest** — see [SPEC §9](SPEC.md#9--privacy--settled). Visibility tiers are enforced at the area boundary **of this server**: sealed areas return nothing, indistinguishable from the area having no entries. That binds any caller whose only route in is the MCP tools. It does not bind an agent with direct filesystem access — entries are plain Markdown and unencrypted, so such an agent can read a sealed area without this server seeing it. See the README for how that limit is stated to users. `request_access` asks with a duration, grants expire, and `propose` is the only path into a sealed area.
 
 ## 6 · The boundary the architecture cannot cross
 
 The connected agent runs outside this system. Whatever it reads goes wherever that agent runs.
 
-No architectural choice here changes that, and the design does not pretend otherwise. What it can do is make the boundary visible: the tending record shows what the agent did with what it read, and per-area grants — **planned, not implemented, and not enforced today** — would let the user say which areas it may reach at all.
+No architectural choice here changes that, and the design does not pretend otherwise. What it does is keep three parts distinct:
 
-This is why the documentation separates **the server's guarantee** (stores locally, no telemetry, no update check — and, with an in-site provider key configured, outbound calls to that one provider and to nothing else; the unkeyed configuration is asserted by a test today, the keyed one is planned for v1.0 along with the path itself) from **the agent's behaviour** (outside our control). Merging those two into one comforting sentence would be the single most damaging untrue claim this project could make.
+1. **The OhMyLife server** stores everything on the user's own machine and initiates nothing of its own.
+2. **A provider key the user configured** sends only what that feature needs, only to the provider they chose.
+3. **The connected agent is outside our boundary.** Whatever it reads goes wherever that agent runs. We can show the user what was read; we cannot stop it leaving.
+
+The access log (`tended/access-log/`) records what the agent read and when, and the tending record shows what it did.
 
 ## 7 · Themes are data
 
@@ -105,13 +109,13 @@ The structural tests are not coverage — each one guards a promise:
 | No agent delete path exists | An agent cannot destroy a memory |
 | `someday` cannot take a date | Someday carries no guilt |
 | No badge, ring or content-state red in the component library | No guilt mechanics, structurally |
-| No outbound call from the running server, with no provider key configured | Half the privacy claim is a claim and not an intention |
+| No outbound call without a provider key; calls only to chosen provider with one | The privacy claim is a claim and not an intention |
 | `lib/` imports neither `app/` nor `mcp/` | One core, and the rules live in one place |
 
 Every one of them is the kind of rule that a contributor who has not read the documentation would otherwise break in good faith. Documentation cannot stop that. A failing build can.
 
-**Two things the egress row does not say, deliberately.**
+**Both halves of the egress guarantee are proven by tests**, in `tests/no-egress.test.ts`: zero egress with no key configured, and calls strictly to the configured provider endpoint with one, with zero telemetry or analytics destinations.
 
-The other half of that sentence — *with* a key, calls to that provider and to nothing else — is **planned for v1.0, and untested.** The in-site key path has no implementation to test yet, and a test written against nothing would be exactly the false green this table exists to prevent. It belongs beside the first assertion when that path lands.
+And **the build is not the server.** `app/fonts.ts` loads its three families through `next/font/google`, which downloads them from Google during `next build` and self-hosts the files it gets — which is why the running server serves fonts from itself and makes no font request. The download is real, though: `next build` fails outright with no route to `fonts.googleapis.com`, so this repository cannot be built offline. Turbopack makes that request natively rather than through Node, where nothing a test can intercept will observe it, so the test asserts it from the source and pins it to the single file responsible.
 
 And **the build is not the server.** `app/fonts.ts` loads its three families through `next/font/google`, which downloads them from Google during `next build` and self-hosts the files it gets — which is why the running server serves fonts from itself and makes no font request. The download is real, though: `next build` fails outright with no route to `fonts.googleapis.com`, so this repository cannot be built offline. Turbopack makes that request natively rather than through Node, where nothing a test can intercept will observe it, so the test asserts it from the source and pins it to the single file responsible.

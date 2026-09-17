@@ -1,7 +1,9 @@
 // `get_life_schema` — called first by any agent, so it discovers the shape
 // of a life (and what it may currently read) rather than guessing. See
 // docs/SPEC.md §8.
+import { getAccessInfo } from "../../lib/access/policy";
 import { AREA_FOR_KIND, AREAS, KINDS } from "../../lib/entry/schema";
+import { resolveLifeRoot } from "../runtime";
 
 export const name = "get_life_schema";
 
@@ -15,24 +17,23 @@ export const config = {
 };
 
 export async function handler() {
+  const lifeRoot = resolveLifeRoot();
+  const info = getAccessInfo(lifeRoot);
+
   const schema = {
     areas: AREAS,
     kinds: KINDS,
     area_for_kind: AREA_FOR_KIND,
     access: {
-      // What survives of per-area access grants is still an open product
-      // decision (docs/SPEC.md §9, "Still open"), and nothing gates a read
-      // today. Stating that plainly here is required by the project's
-      // truthfulness rule: this server does not enforce access, so it must
-      // not claim that it does.
-      enforced: false,
-      readable_areas: AREAS,
-      writable_areas: AREAS,
+      enforced: true,
+      readable_areas: info.readableAreas,
+      writable_areas: info.writableAreas,
+      sealed_areas: info.sealedAreas,
+      grants: info.grants,
       note:
-        "No access policy is implemented yet. Every area is currently " +
-        "readable and writable by any connected agent. request_access " +
-        "records a request for the record, but nothing is gated on it in " +
-        "this version.",
+        "Access policy is enforced. Sealed areas return nothing and cannot " +
+        "be read or directly written without an active grant. Use request_access " +
+        "to ask for a time-bounded grant, or propose to suggest changes in sealed areas.",
     },
   };
   return {

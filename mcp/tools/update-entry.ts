@@ -7,6 +7,7 @@
 // `archive_entry`'s job, so there is exactly one path that can make an
 // entry disappear from view, and it always carries its own reason.
 import { z } from "zod";
+import { isAreaReadable } from "../../lib/access/policy";
 import { AREAS, KINDS, fieldsForKind, type Kind } from "../../lib/entry/schema";
 import { readEntry } from "../../lib/entry/read";
 import { writeEntry } from "../../lib/entry/write";
@@ -57,7 +58,7 @@ export const config = {
 export async function handler(args: Record<string, unknown> & { id: string; reason: string }) {
   const lifeRoot = resolveLifeRoot();
   const existing = readEntry(lifeRoot, args.id);
-  if (!existing) {
+  if (!existing || !isAreaReadable(lifeRoot, existing.entry.area)) {
     return {
       isError: true,
       content: [{ type: "text" as const, text: `No entry with id "${args.id}" exists.` }],

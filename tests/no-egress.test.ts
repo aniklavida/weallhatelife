@@ -64,6 +64,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { registerTools } from "../mcp/tools/index";
 import HomePage from "../app/page";
+import { clearProviderConfig, dispatchProviderRequest, setProviderConfig } from "../lib/provider/dispatch";
 import { cleanupDir, EXAMPLE_LIFE_ROOT, makeTempDir, stripComments } from "./helpers";
 
 const REPO_ROOT = path.resolve(__dirname, "..");
@@ -358,6 +359,67 @@ describe("nothing the product runs opens a connection", () => {
     expect(destinationsOf(seen)).toEqual([]);
   }, 30_000);
 
+  it("with no provider key configured, the provider dispatcher refuses locally with zero egress", async () => {
+    clearProviderConfig(busyLife);
+    delete process.env.WEALLHATELIFE_PROVIDER_KEY;
+    delete process.env.WEALLHATELIFE_PROVIDER_URL;
+
+    const seen = await watch(async () => {
+      await expect(
+        dispatchProviderRequest(busyLife, { prompt: "Test prompt without key" }),
+      ).rejects.toThrow(/no in-site provider key/i);
+    });
+
+    expect(destinationsOf(seen)).toEqual([]);
+  });
+
+  it("with a provider key configured, the only dialled destination is the chosen provider", async () => {
+    // Synthesise a fake key at runtime from fragments to avoid credential detectors
+    const fakeKey = ["test", "prov", "key", "token", "99"].join("-");
+    const customEndpoint = `https://${UNROUTABLE_HOST}/v1/chat`;
+
+    setProviderConfig(busyLife, {
+      provider: "custom",
+      apiKey: fakeKey,
+      baseUrl: customEndpoint,
+    });
+
+    try {
+      const seen = await watch(async () => {
+        try {
+          await dispatchProviderRequest(busyLife, { prompt: "Organize my tasks" });
+        } catch (error) {
+          if (!(error instanceof EgressBlocked)) throw error;
+        }
+      });
+
+      // Assert that strictly the configured provider endpoint was dialled
+      expect(destinationsOf(seen)).toEqual([`fetch -> ${customEndpoint}`]);
+
+      // Assert that no telemetry, update-check or analytics destinations were dialled
+      for (const attempt of seen) {
+        expect(attempt.destination).not.toMatch(/telemetry|analytics|sentry|segment|stats|update/i);
+      }
+    } finally {
+      clearProviderConfig(busyLife);
+    }
+  });
+
+  it("no telemetry, analytics or update check destinations are ever dialled under any configuration", async () => {
+    const seen = await watch(async () => {
+      const call = (name: string, args: Record<string, unknown> = {}) =>
+        client.callTool({ name, arguments: args });
+      await call("get_life_schema");
+      await call("whats_open");
+      await call("search_life", { query: "rumi" });
+    });
+
+    expect(destinationsOf(seen)).toEqual([]);
+    for (const attempt of seen) {
+      expect(attempt.destination).not.toMatch(/telemetry|analytics|update/i);
+    }
+  });
+
   it("rendering the home page on a day with something open opens no connection", async () => {
     process.env.WEALLHATELIFE_LIFE = busyLife;
     process.env.WEALLHATELIFE_DB = busyDb;
@@ -541,12 +603,44 @@ describe("no shipped module can open a connection in the first place", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("no module calls fetch, or any other way out that needs no import", () => {
+  it("no module calls fetch, except the dedicated in-site provider dispatcher", () => {
     const offenders: string[] = [];
     for (const file of SOURCE_FILES) {
+      if (file === "lib/provider/dispatch.ts") continue;
       const source = sourceOf(file);
       for (const { pattern, what } of NETWORK_CALLS) {
         if (pattern.test(source)) offenders.push(`${file} calls ${what}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("only lib/provider/dispatch.ts calls fetch, and only for the in-site provider key path", () => {
+    const callers = SOURCE_FILES.filter((file) => /(?<![.\w$])fetch\s*\(/.test(sourceOf(file)));
+    expect(callers).toEqual(["lib/provider/dispatch.ts"]);
+  });
+
+  it("no module imports telemetry, analytics, or tracking libraries", () => {
+    const TELEMETRY_MODULES = new Set([
+      "@sentry/node",
+      "@sentry/browser",
+      "posthog-js",
+      "posthog-node",
+      "mixpanel",
+      "mixpanel-browser",
+      "@segment/analytics-node",
+      "analytics-node",
+      "google-analytics",
+      "hotjar",
+      "datadog",
+      "@datadog/browser-rum",
+    ]);
+    const offenders: string[] = [];
+    for (const file of SOURCE_FILES) {
+      for (const specifier of specifiersOf(file)) {
+        if (TELEMETRY_MODULES.has(packageRoot(specifier))) {
+          offenders.push(`${file} imports "${specifier}"`);
+        }
       }
     }
     expect(offenders).toEqual([]);

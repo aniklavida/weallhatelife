@@ -34,10 +34,7 @@ export function recordAccessRequest(lifeRoot: string, input: AccessRequestInput)
     area: input.area,
     duration: input.duration,
     requested_at: requestedAt,
-    // No policy exists to grant or deny against yet — see the module
-    // comment. This is a statement of fact about this version of the
-    // server, not a placeholder for a future enum of outcomes.
-    status: "not_gated_no_policy_exists",
+    status: "pending",
   };
   const contents = matter.stringify(`Reason: ${input.reason}\n`, frontMatter);
 

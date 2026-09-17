@@ -4,6 +4,9 @@
 // lib/summary/whats-open.ts, shared with the website's home route
 // (app/page.tsx) — this file resolves the life's location and formats the
 // MCP-facing response around that shared result.
+import { recordReadAccess } from "../../lib/access/log";
+import { isAreaReadable } from "../../lib/access/policy";
+import type { Area } from "../../lib/entry/schema";
 import { computeOpenItems } from "../../lib/summary/whats-open";
 import { ensureFreshIndex, resolveDbPath, resolveLifeRoot } from "../runtime";
 
@@ -23,7 +26,15 @@ export const config = {
 export async function handler() {
   const lifeRoot = resolveLifeRoot();
   const dbPath = ensureFreshIndex(lifeRoot, resolveDbPath());
-  const items = computeOpenItems(dbPath);
+  const rawItems = computeOpenItems(dbPath);
+
+  // Sealed areas never appear in what's open.
+  const items = rawItems.filter((item) => isAreaReadable(lifeRoot, item.area as Area));
+
+  recordReadAccess(lifeRoot, {
+    tool: name,
+    summary: `Checked what's open (${items.length} item${items.length === 1 ? "" : "s"}).`,
+  });
 
   const body =
     items.length === 0

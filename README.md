@@ -82,20 +82,38 @@ This matters more here than in most software. The product asks you to put your l
 
 ## Privacy, stated precisely
 
-Health and money are in scope, so this has to be exact rather than reassuring. There are two boundaries, and only one of them is ours:
+Health and money are in scope, so this has to be exact rather than reassuring. There are three parts to the boundary, and we state each plainly:
 
-- **The WeAllHateLife server** stores everything on your own machine, sends no telemetry and runs no update check. If you add your own provider key in the site, the server calls that one provider and nothing else. The claim is therefore **"nothing leaves unless you configure a key, and then only to the provider you chose"** — never a blanket promise that nothing leaves at all. *(Planned for v1.0. Two tests: zero outbound calls with no key configured, and calls only to that provider's endpoint with one configured.)*
-- **The AI you connect** is outside that boundary. If you connect a hosted model, whatever it reads travels to whoever runs that model. We can show you what was read. We cannot stop it leaving.
+1. **The OhMyLife server** stores everything on the user's own machine and initiates nothing of its own.
+2. **A provider key the user configured** sends only what that feature needs, only to the provider they chose.
+3. **The connected agent is outside our boundary.** Whatever it reads goes wherever that agent runs. We can show the user what was read; we cannot stop it leaving.
 
 **So: "your data never leaves your machine" is not a claim this project makes**, because it would be false under a cloud-hosted agent, and false again the moment you configure a key.
 
 **If you want nothing to leave your machine, point WeAllHateLife at a local model — or connect no model at all.** That is the only thing that actually delivers it, so it is what this documentation names rather than a setting that merely implies it.
 
-**There are no privacy tiers.** No per-entry `open` / `private` / `sealed` visibility, no area that hides itself — whatever the agent you connect can reach, it can read. Tiers were considered and rejected: nothing about a tier stops a hosted model retaining what it was already shown, so it would sell a safety it cannot deliver, and a false sense of safety is worse than a stated limit.
+**Egress guarantees, tested and proven:**
+- **With no provider key configured, egress is zero** across a full MCP session, asserted automatically by tests.
+- **No telemetry, no update check, no analytics, ever** — unconditional, under any configuration.
+- **With a provider key configured**, the only permitted destination is the provider the user chose, for work the user asked for. Nothing else is dialled.
+
+**Visibility tiers enforced at the tool boundary:**
+- An agent asking for a **sealed area** gets **nothing** — not a filtered view whose shape it could infer from what is missing. Absence of a result and absence of the area are indistinguishable to the caller.
+- `get_life_schema` tells an agent what it is currently allowed to read, so it discovers its boundaries up front rather than guessing from failures.
+- `request_access` asks for an area with a reason and a duration. **Grants expire** — a permanent grant is a grant nobody revisits.
+- **`propose` is the only path into a sealed area**, and it needs the person's yes. Direct creation, updates, and archiving in sealed areas are refused.
+- **Revoking an area mid-session takes effect immediately**, on the very next tool call.
+
+**What sealing is, and what it is not.** Sealing is a boundary on what **this server hands over**. It is real against an agent whose only way in is the MCP tools — a hosted model, a chat client, anything running somewhere else. Those callers genuinely cannot see a sealed area, and cannot infer its shape from what is missing.
+
+It is **not** a boundary against an agent that can read your files directly. Entries are plain Markdown on disk and nothing is encrypted, so a coding agent running on this machine with file access can open `life/<area>/` and read a sealed entry without ever asking this server. Sealing does not stop that, the access log does not see it, and no setting here can change it — the same reason the third egress sentence exists.
+
+So seal for the reason it works: to keep an area out of what a connected agent is handed, and to make every read of the rest of it visible. Do not seal expecting it to withstand an agent that already has your filesystem. **If that distinction matters for something, the answer is not to put it in a sealed area — it is to keep it out of the life folder.**
+
+**An access log you can read:**
+Every time an agent reads an entry, lists an area, searches, or checks what is open, that read is logged with its timestamp, tool and area in `tended/access-log/YYYY-MM-DD.md`. You can read what your agent *read*, and when — not only what it wrote.
 
 **Your files stay plain Markdown on disk. There is no encryption inside the application, and none is planned.** A life has to outlive the software, and encrypted files are landfill without the app that wrote them. On your own machine, full-disk encryption — FileVault, BitLocker, LUKS — already handles the stolen-laptop threat, and handles it better than anything this project would write. **Disk encryption is your operating system's job**, and this README would rather say so than imply the app does it.
-
-What an agent is *granted* — per-area access, and what requires your explicit yes — is still being decided and is marked open in the [specification](docs/SPEC.md). **Nothing gates reads today**, and nothing in this repository pretends otherwise.
 
 ## Two ways to connect an AI
 

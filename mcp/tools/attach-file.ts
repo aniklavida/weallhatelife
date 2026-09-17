@@ -3,7 +3,9 @@
 // a local, stdio-connected agent that already has filesystem access) or
 // base64 bytes (for a remote agent with no shared filesystem).
 import { z } from "zod";
+import { isAreaReadable } from "../../lib/access/policy";
 import { attachFile } from "../../lib/entry/attach";
+import { readEntry } from "../../lib/entry/read";
 import { recordTending } from "../../lib/tending/record";
 import { resolveLifeRoot } from "../runtime";
 
@@ -40,6 +42,14 @@ export async function handler(args: {
   }
 
   const lifeRoot = resolveLifeRoot();
+  const existing = readEntry(lifeRoot, args.id);
+  if (!existing || !isAreaReadable(lifeRoot, existing.entry.area)) {
+    return {
+      isError: true,
+      content: [{ type: "text" as const, text: `No entry with id "${args.id}" exists.` }],
+    };
+  }
+
   let written: ReturnType<typeof attachFile>;
   try {
     written = attachFile(lifeRoot, args.id, {

@@ -131,22 +131,33 @@ Two rules are doing real work:
 
 Health and money are in scope, so this is stated precisely rather than reassuringly.
 
-**Two boundaries, and only the first is ours:**
+**Three parts to the boundary, kept distinct in every document:**
 
-- **The server** stores everything on the user's machine, sends no telemetry and runs no update check. **But with an in-site provider key configured (§10) the server itself calls that provider.** The honest sentence is therefore *"nothing leaves unless you configure a key, and then only to the provider you chose"* — not a blanket zero-egress promise, which would be false in that configuration. *(Planned for v1.0; the v1 test is scoped to match — §18.)*
-- **The connected agent** is outside that boundary. Whatever it reads travels to wherever that agent runs. The product can show the user what was read; it cannot stop it leaving.
+1. **The OhMyLife server** stores everything on the user's own machine and initiates nothing of its own.
+2. **A provider key the user configured** sends only what that feature needs, only to the provider they chose.
+3. **The connected agent is outside our boundary.** Whatever it reads goes wherever that agent runs. We can show the user what was read; we cannot stop it leaving.
 
 **This project therefore does not claim that your data never leaves your machine.** Under a hosted model that claim would be false, and a privacy claim that is only true in some configurations is not a privacy claim.
 
-### No tiers. The AI sees everything
+### Visibility tiers enforced at the tool boundary
 
-There are **no `open` / `private` / `sealed` per-entry visibility tiers**, and no area that is invisible to an agent by default. Whatever the connected agent can reach, it can read.
+There are no per-entry sensitivity tags, but **visibility tiers are enforced at the area level at the tool boundary** through `lib/access/policy.ts`:
 
-The reasoning matters more than the rule. **Neither a tier nor encryption stops a hosted model retaining what it was already shown.** A tier would therefore sell a safety it cannot deliver, and a false sense of safety is worse than a plainly stated limit.
+- An agent asking for a **sealed area** gets **nothing** — not a filtered view whose shape it could infer from what is missing. Absence of a result and absence of the area are indistinguishable to the caller.
+- `get_life_schema` tells an agent what it is currently allowed to read, so it discovers its boundaries up front rather than guessing from failures.
+- `request_access` asks for an area with a reason and a duration. **Grants expire** — a permanent grant is a grant nobody revisits.
+- **`propose` is the only path into a sealed area**, and it needs the person's yes. Direct creation, updates, and archiving in sealed areas are refused.
 
-**The escape hatch is real, and it is the one this specification names:** anyone who wants nothing leaving their machine points WeAllHateLife at a **local model**, or connects no model at all. That is the only mechanism that actually delivers it.
+**What sealing is, and what it is not.** Sealing is a boundary on what **this server hands over**. It is real against an agent whose only way in is the MCP tools — a hosted model, a chat client, anything running somewhere else. Those callers genuinely cannot see a sealed area, and cannot infer its shape from what is missing.
 
-A three-tier proposal (`open` · `private` · `sealed`, with Body and Money defaulting to `private`) was previously described here. **It is withdrawn**, and nothing is being built against it.
+It is **not** a boundary against an agent that can read your files directly. Entries are plain Markdown on disk and nothing is encrypted, so a coding agent running on this machine with file access can open `life/<area>/` and read a sealed entry without ever asking this server. Sealing does not stop that, the access log does not see it, and no setting here can change it — the same reason the third egress sentence exists.
+
+So seal for the reason it works: to keep an area out of what a connected agent is handed, and to make every read of the rest of it visible. Do not seal expecting it to withstand an agent that already has your filesystem. **If that distinction matters for something, the answer is not to put it in a sealed area — it is to keep it out of the life folder.**
+- **Revoking an area mid-session takes effect immediately**, on the very next tool call.
+
+### The access log: what your agent read
+
+Every time an agent reads an entry, lists an area, searches, or checks what is open, that read is logged with its timestamp, tool and area in `tended/access-log/YYYY-MM-DD.md`. The user can read what their agent *read*, and when — not only what it wrote.
 
 ### Data at rest stays readable — no application-level encryption
 
@@ -157,11 +168,6 @@ Entries stay plain Markdown on disk, openable in any text editor. Three reasons:
 3. **The cost is concrete.** Application-level encryption adds key management, a password-recovery story with no good answer, and backup complexity — and it breaks search outright, because the full-text index cannot index what it cannot read.
 
 Encrypting a *single* entry — a passport number, a credential — rather than the whole store is noted as a possible future option. It is **not planned for v1.0**, and nothing should be built assuming it.
-
-**Still open, and marked so deliberately:**
-
-1. Whether an agent's **reads** are logged and shown the way its writes are.
-2. **What survives of per-area access grants** now that per-entry tiers are gone. The agent surface still carries `request_access` and reports what an agent may currently read, and §15 still puts every read behind one gate. Whether per-area grants remain as a mechanism of their own is undecided. What is certain either way: **no access policy is enforced today** — the MCP server reports its access state as unenforced — so no document here may describe area permissions as in place.
 
 ## 10 · Both connection paths ship — **settled**
 
