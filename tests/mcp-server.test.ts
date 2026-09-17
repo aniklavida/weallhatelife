@@ -88,10 +88,11 @@ describe("the MCP server, over a real client", () => {
     );
   });
 
-  it("get_life_schema states plainly that access is not enforced", async () => {
+  it("get_life_schema states that access is enforced and lists readable areas", async () => {
     const { body } = await callJson(client, "get_life_schema");
     expect(body.areas).toContain("money");
-    expect(body.access.enforced).toBe(false);
+    expect(body.access.enforced).toBe(true);
+    expect(body.access.readable_areas).toContain("money");
   });
 
   it("search_life finds a person by name in her own entry and in a memory about her", async () => {
@@ -365,14 +366,16 @@ describe("the MCP server, over a real client", () => {
     expect(fs.existsSync(path.join(lifeRoot, body.relative_path))).toBe(true);
   });
 
-  it("request_access records the ask and says plainly that nothing is gated", async () => {
+  it("request_access records the ask with duration and reports status", async () => {
     const { body } = await callJson(client, "request_access", {
       area: "body",
       reason: "Would like to read sleep measurements to notice patterns.",
       duration: "30d",
     });
     expect(fs.existsSync(path.join(lifeRoot, body.relative_path))).toBe(true);
-    expect(body.note).toMatch(/no access policy/i);
+    expect(body.duration).toBe("30d");
+    expect(body.granted).toBe(true);
+    expect(body.note).toContain("already readable");
   });
 
   it("attach_file copies bytes beside the entry and adds it to attachments", async () => {

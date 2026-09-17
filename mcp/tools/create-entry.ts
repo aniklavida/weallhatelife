@@ -12,7 +12,8 @@
 // anything is written, and the tending line is written from the same value
 // that made the write possible.
 import { z } from "zod";
-import { AREAS, KINDS, fieldsForKind, type Kind } from "../../lib/entry/schema";
+import { isAreaWritable } from "../../lib/access/policy";
+import { AREAS, KINDS, fieldsForKind, type Area, type Kind } from "../../lib/entry/schema";
 import { writeEntry } from "../../lib/entry/write";
 import { recordTending } from "../../lib/tending/record";
 import { resolveLifeRoot, slugify, uniqueId } from "../runtime";
@@ -98,8 +99,21 @@ export const config = {
   },
 };
 
-export async function handler(args: Record<string, unknown> & { kind: Kind; title: string; reason: string }) {
+export async function handler(args: Record<string, unknown> & { area: Area; kind: Kind; title: string; reason: string }) {
   const lifeRoot = resolveLifeRoot();
+
+  if (!isAreaWritable(lifeRoot, args.area)) {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text" as const,
+          text: `Area "${args.area}" is sealed. Use propose to suggest changes in sealed areas.`,
+        },
+      ],
+    };
+  }
+
   const { reason, id: requestedId, ...rest } = args;
 
   const allowedKeys = new Set(fieldsForKind(args.kind));

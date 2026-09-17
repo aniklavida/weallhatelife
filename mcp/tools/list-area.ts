@@ -1,6 +1,8 @@
 // `list_area` — browse one area with a filter and an order. See docs/SPEC.md
 // §8.
 import { z } from "zod";
+import { recordReadAccess } from "../../lib/access/log";
+import { isAreaReadable } from "../../lib/access/policy";
 import { AREAS, KINDS } from "../../lib/entry/schema";
 import { listIndexedEntries } from "../../lib/index/query";
 import { ensureFreshIndex, resolveDbPath, resolveLifeRoot } from "../runtime";
@@ -34,6 +36,17 @@ export async function handler(args: {
   limit?: number;
 }) {
   const lifeRoot = resolveLifeRoot();
+
+  // A sealed area returns nothing — indistinguishable from the area having no entries.
+  if (!isAreaReadable(lifeRoot, args.area)) {
+    const body = {
+      area: args.area,
+      count: 0,
+      entries: [],
+    };
+    return { content: [{ type: "text" as const, text: JSON.stringify(body, null, 2) }] };
+  }
+
   const dbPath = ensureFreshIndex(lifeRoot, resolveDbPath());
 
   const orderBy = args.order_by ?? "title";
@@ -52,6 +65,12 @@ export async function handler(args: {
       return order === "asc" ? cmp : -cmp;
     })
     .slice(0, limit);
+
+  recordReadAccess(lifeRoot, {
+    tool: name,
+    area: args.area,
+    summary: `Listed ${rows.length} entries in area "${args.area}".`,
+  });
 
   const body = {
     area: args.area,

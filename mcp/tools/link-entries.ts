@@ -6,6 +6,7 @@
 // the same way the file-format layer allows it, so a link can point at
 // something an agent is about to file next).
 import { z } from "zod";
+import { isAreaReadable } from "../../lib/access/policy";
 import { readEntry } from "../../lib/entry/read";
 import { writeEntry } from "../../lib/entry/write";
 import { recordTending } from "../../lib/tending/record";
@@ -38,10 +39,23 @@ export async function handler(args: {
 }) {
   const lifeRoot = resolveLifeRoot();
   const existing = readEntry(lifeRoot, args.from);
-  if (!existing) {
+  if (!existing || !isAreaReadable(lifeRoot, existing.entry.area)) {
     return {
       isError: true,
       content: [{ type: "text" as const, text: `No entry with id "${args.from}" exists.` }],
+    };
+  }
+
+  const toExisting = readEntry(lifeRoot, args.to);
+  if (toExisting && !isAreaReadable(lifeRoot, toExisting.entry.area)) {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text" as const,
+          text: `Cannot link to entry in sealed area "${toExisting.entry.area}". Use propose to suggest links to sealed entries.`,
+        },
+      ],
     };
   }
 

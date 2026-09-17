@@ -6,7 +6,9 @@
 // timestamp — nothing is removed from disk, and restoring it is a single
 // field clear away.
 import { z } from "zod";
+import { isAreaReadable } from "../../lib/access/policy";
 import { archiveEntry } from "../../lib/entry/archive";
+import { readEntry } from "../../lib/entry/read";
 import { recordTending } from "../../lib/tending/record";
 import { resolveLifeRoot } from "../runtime";
 
@@ -25,6 +27,14 @@ export const config = {
 
 export async function handler(args: { id: string; reason: string }) {
   const lifeRoot = resolveLifeRoot();
+  const existing = readEntry(lifeRoot, args.id);
+  if (!existing || !isAreaReadable(lifeRoot, existing.entry.area)) {
+    return {
+      isError: true,
+      content: [{ type: "text" as const, text: `No entry with id "${args.id}" exists.` }],
+    };
+  }
+
   let written: ReturnType<typeof archiveEntry>;
   try {
     written = archiveEntry(lifeRoot, args.id);

@@ -2,7 +2,9 @@
 // under the hood (lib/index/search.ts); this file only resolves the life
 // root, refreshes the index and shapes the result. See docs/SPEC.md §8.
 import { z } from "zod";
-import { AREAS } from "../../lib/entry/schema";
+import { recordReadAccess } from "../../lib/access/log";
+import { isAreaReadable } from "../../lib/access/policy";
+import { AREAS, type Area } from "../../lib/entry/schema";
 import { searchLife } from "../../lib/index/search";
 import { ensureFreshIndex, resolveDbPath, resolveLifeRoot } from "../runtime";
 
@@ -30,12 +32,32 @@ export async function handler(args: {
   include_archived?: boolean;
 }) {
   const lifeRoot = resolveLifeRoot();
+
+  // If filtered to a sealed area, return zero results — indistinguishable
+  // from no matches in that area.
+  if (args.area && !isAreaReadable(lifeRoot, args.area)) {
+    const body = {
+      query: args.query,
+      count: 0,
+      results: [],
+    };
+    return { content: [{ type: "text" as const, text: JSON.stringify(body, null, 2) }] };
+  }
+
   const dbPath = ensureFreshIndex(lifeRoot, resolveDbPath());
 
   const hits = searchLife(dbPath, args.query, {
     limit: args.limit ?? 20,
     includeArchived: args.include_archived ?? false,
-  }).filter((hit) => !args.area || hit.area === args.area);
+  })
+    .filter((hit) => !args.area || hit.area === args.area)
+    .filter((hit) => isAreaReadable(lifeRoot, hit.area as Area));
+
+  recordReadAccess(lifeRoot, {
+    tool: name,
+    area: args.area,
+    summary: `Searched "${args.query}" (${hits.length} result${hits.length === 1 ? "" : "s"}).`,
+  });
 
   const body = {
     query: args.query,
