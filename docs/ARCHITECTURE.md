@@ -1,6 +1,6 @@
 # Architecture
 
-**Nothing here is implemented.** This is the shape the first commits build into.
+**Some parts are implemented.** This is the shape the first commits build into.
 
 ## The shape
 

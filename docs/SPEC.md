@@ -133,7 +133,7 @@ Health and money are in scope, so this is stated precisely rather than reassurin
 
 **Three parts to the boundary, kept distinct in every document:**
 
-1. **The OhMyLife server** stores everything on the user's own machine and initiates nothing of its own.
+1. **The OhMyLife server** stores everything on the user's own machine and initiates nothing of its own (except to the chosen provider when an in-site key is configured).
 2. **A provider key the user configured** sends only what that feature needs, only to the provider they chose.
 3. **The connected agent is outside our boundary.** Whatever it reads goes wherever that agent runs. We can show the user what was read; we cannot stop it leaving.
 
@@ -159,7 +159,7 @@ So seal for the reason it works: to keep an area out of what a connected agent i
 
 Every time an agent reads an entry, lists an area, searches, or checks what is open, that read is logged with its timestamp, tool and area in `tended/access-log/YYYY-MM-DD.md`. The user can read what their agent *read*, and when — not only what it wrote.
 
-### Data at rest stays readable — no application-level encryption
+### Data at rest stays readable — no application-level encryption for life entries
 
 Entries stay plain Markdown on disk, openable in any text editor. Three reasons:
 
@@ -167,7 +167,7 @@ Entries stay plain Markdown on disk, openable in any text editor. Three reasons:
 2. **Self-hosted means the operating system already covers this.** Full-disk encryption — FileVault, BitLocker, LUKS — handles the stolen-laptop threat, and handles it better than anything this project would write. **Disk encryption is the operating system's job**, and this document says so rather than implying the application does it.
 3. **The cost is concrete.** Application-level encryption adds key management, a password-recovery story with no good answer, and backup complexity — and it breaks search outright, because the full-text index cannot index what it cannot read.
 
-Encrypting a *single* entry — a passport number, a credential — rather than the whole store is noted as a possible future option. It is **not planned for v1.0**, and nothing should be built assuming it.
+The credential store for the in-site provider key is an exception: the API key is **encrypted at rest** against incidental reading (**implemented and tested**). However, encrypting life entries (like a passport number) remains **not planned for v1.0**.
 
 ## 10 · Both connection paths ship — **settled**
 
@@ -280,7 +280,7 @@ docker run -v ./life:/life -p 3000:3000 weallhatelife
 - **The volume is the whole life.** Copy the folder and you have moved house. There is no export feature because there is nothing to export from.
 - **MCP over stdio** for a local agent — no network, no token. Streamable HTTP behind a bearer token for a remote agent, off by default.
 - **Backup is your own `git` repository**, if you want one. Plain files make that free rather than a feature.
-- **No telemetry and no update check.** The server makes no outbound call of its own — **except to the provider whose key the user configured in-site (§10), and to nothing else.** To be asserted by a test in both configurations (§18), which is what will make it a claim rather than an intention.
+- **No telemetry and no update check.** The server makes no outbound call of its own — **except to the provider whose key the user configured in-site (§10), and to nothing else.** This is asserted by a test in both configurations (§18), making it a proven claim.
 
 ## 17 · Non-goals
 
