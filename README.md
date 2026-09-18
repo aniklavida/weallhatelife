@@ -93,9 +93,9 @@ Health and money are in scope, so this has to be exact rather than reassuring. T
 **If you want nothing to leave your machine, point WeAllHateLife at a local model — or connect no model at all.** That is the only thing that actually delivers it, so it is what this documentation names rather than a setting that merely implies it.
 
 **Egress guarantees, tested and proven:**
-- **With no provider key configured, egress is zero** across a full MCP session, asserted automatically by tests.
+- **The server initiates nothing of its own, except to the provider chosen.** With no provider key configured, egress is zero. With a provider key configured, the only permitted destination is that provider.
 - **No telemetry, no update check, no analytics, ever** — unconditional, under any configuration.
-- **With a provider key configured**, the only permitted destination is the provider the user chose, for work the user asked for. Nothing else is dialled.
+- **Provider credentials are encrypted at rest (implemented and tested).** The actual live-provider round-trip feature is **experimental** and verified only against mock endpoints.
 
 **Visibility tiers enforced at the tool boundary:**
 - An agent asking for a **sealed area** gets **nothing** — not a filtered view whose shape it could infer from what is missing. Absence of a result and absence of the area are indistinguishable to the caller.
