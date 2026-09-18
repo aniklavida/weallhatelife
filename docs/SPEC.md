@@ -295,7 +295,7 @@ Not a hosted service · not a template for someone else's note tool · not a pho
 - [ ] The tending panel shows filed, corrected **and left-alone** entries, and every line is reversible where it is read.
 - [ ] Deleting the index and restarting rebuilds it from the files with no data loss.
 - [ ] Swapping the theme folder changes every photograph and colour, and moves no layout.
-- [ ] Every shipped photograph has a licence recorded in its theme manifest.
+- [ ] A user's own uploaded photo is theirs; the product records no licence and does not redistribute it. Default images shipped in the repository are AI-generated for this project, and that origin is stated where they ship. Any third-party photograph shipped carries a licence in its theme manifest.
 - [ ] Light and dark are each reviewed as designed surfaces.
 - [ ] The component library contains no streak, badge count or content-state red.
 - [ ] `someday` entries cannot be given a due date through any tool, and never appear in `whats_open`.
